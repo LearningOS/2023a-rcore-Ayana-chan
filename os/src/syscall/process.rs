@@ -26,8 +26,8 @@ pub struct TaskInfo {
 }
 
 /// 增加当前task的目标syscall计数
-pub fn increase_curr_task_syscall_times(syscall_id: &usize) {
-    fetch_curr_task_control_block().task_syscall_times[*syscall_id] += 1;
+pub unsafe fn increase_curr_task_syscall_times(syscall_id: &usize) {
+    (*fetch_curr_task_control_block()).task_syscall_times[*syscall_id] += 1;
 }
 
 /// task exits and submit an exit code
@@ -62,8 +62,8 @@ pub fn sys_task_info(_ti: *mut TaskInfo) -> isize {
     trace!("kernel: sys_task_info");
     let curr_task_cb = fetch_curr_task_control_block();
     unsafe {
-        (*_ti).status = curr_task_cb.task_status;
-        (*_ti).syscall_times = curr_task_cb.task_syscall_times;
+        (*_ti).status = (*curr_task_cb).task_status;
+        (*_ti).syscall_times = (*curr_task_cb).task_syscall_times;
         (*_ti).time = get_time();
     }
     0

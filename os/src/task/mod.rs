@@ -143,9 +143,10 @@ impl TaskManager {
     }
 
     /// 获取当前正在运行的任务的信息
-    fn fetch_curr_task_control_block(&self) -> &'static TaskControlBlock{
-        let inner = self.inner.exclusive_access();
-        &inner.tasks[inner.current_task]
+    fn fetch_curr_task_control_block(&self) -> *mut TaskControlBlock{
+        let cur_task = self.get_curr_task_id();
+        &mut self.inner.exclusive_access()
+            .tasks[cur_task]
     }
 
 }
@@ -177,7 +178,7 @@ pub fn get_curr_task_id() -> usize {
 }
 
 /// 获取当前正在运行的任务的信息
-pub fn fetch_curr_task_control_block() -> &'static TaskControlBlock{
+pub fn fetch_curr_task_control_block() -> *mut TaskControlBlock{
     TASK_MANAGER.fetch_curr_task_control_block()
 }
 
