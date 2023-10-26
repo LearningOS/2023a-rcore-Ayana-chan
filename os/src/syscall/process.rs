@@ -1,9 +1,15 @@
 //! Process management syscalls
 use crate::{
     config::MAX_SYSCALL_NUM,
-    task::{exit_current_and_run_next, suspend_current_and_run_next, TaskStatus},
-    timer::get_time_us,
+    task::{fetch_curr_task_control_block, exit_current_and_run_next, suspend_current_and_run_next, TaskStatus},
+    timer::{get_time_us, get_time},
+    sync::UPSafeCell
 };
+use lazy_static::*;
+
+lazy_static! {
+    pub static ref COUNT_SYSCALL_TIMES: UPSafeCell<[u32; MAX_SYSCALL_NUM]> = unsafe{UPSafeCell::new([0; MAX_SYSCALL_NUM])};
+}
 
 #[repr(C)]
 #[derive(Debug)]
@@ -53,5 +59,11 @@ pub fn sys_get_time(ts: *mut TimeVal, _tz: usize) -> isize {
 /// YOUR JOB: Finish sys_task_info to pass testcases
 pub fn sys_task_info(_ti: *mut TaskInfo) -> isize {
     trace!("kernel: sys_task_info");
-    -1
+    let curr_task_cb = fetch_curr_task_control_block();
+    unsafe {
+        (*_ti).status = (*curr_task_cb).task_status;
+        (*_ti).syscall_times = COUNT_SYSCALL_TIMES.exclusive_access().clone();
+        (*_ti).time = get_time();
+    }
+    0
 }

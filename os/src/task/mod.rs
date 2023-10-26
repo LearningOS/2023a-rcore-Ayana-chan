@@ -135,6 +135,13 @@ impl TaskManager {
             panic!("All applications completed!");
         }
     }
+
+    /// 获取当前正在运行的任务的信息
+    fn fetch_curr_task_control_block(&self) -> *const TaskControlBlock{
+        let inner = self.inner.exclusive_access();
+        &inner.tasks[inner.current_task] as *const TaskControlBlock
+    }
+
 }
 
 /// Run the first task in task list.
@@ -158,6 +165,11 @@ fn mark_current_exited() {
     TASK_MANAGER.mark_current_exited();
 }
 
+/// 获取当前正在运行的任务的信息
+pub fn fetch_curr_task_control_block() -> *const TaskControlBlock{
+    TASK_MANAGER.fetch_curr_task_control_block()
+}
+
 /// Suspend the current 'Running' task and run the next task in task list.
 pub fn suspend_current_and_run_next() {
     mark_current_suspended();
@@ -169,3 +181,5 @@ pub fn exit_current_and_run_next() {
     mark_current_exited();
     run_next_task();
 }
+
+
