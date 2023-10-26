@@ -136,6 +136,11 @@ impl TaskManager {
         }
     }
 
+    /// 获取当前task id
+    fn get_curr_task_id(&self) -> u32 {
+        self.inner.exclusive_access().current_task
+    }
+
     /// 获取当前正在运行的任务的信息
     fn fetch_curr_task_control_block(&self) -> *const TaskControlBlock{
         let inner = self.inner.exclusive_access();
@@ -163,6 +168,11 @@ fn mark_current_suspended() {
 /// Change the status of current `Running` task into `Exited`.
 fn mark_current_exited() {
     TASK_MANAGER.mark_current_exited();
+}
+
+/// 获取当前task id
+pub fn get_curr_task_id() -> u32 {
+    TASK_MANAGER.get_curr_task_id()
 }
 
 /// 获取当前正在运行的任务的信息

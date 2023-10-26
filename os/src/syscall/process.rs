@@ -1,15 +1,13 @@
 //! Process management syscalls
 use crate::{
     config::MAX_SYSCALL_NUM,
-    task::{fetch_curr_task_control_block, exit_current_and_run_next, suspend_current_and_run_next, TaskStatus},
+    task::{get_curr_task_id,fetch_curr_task_control_block, exit_current_and_run_next, suspend_current_and_run_next, TaskStatus},
     timer::{get_time_us, get_time},
     sync::UPSafeCell
 };
 use lazy_static::*;
 
-lazy_static! {
-    pub static ref COUNT_SYSCALL_TIMES: UPSafeCell<[u32; MAX_SYSCALL_NUM]> = unsafe{UPSafeCell::new([0; MAX_SYSCALL_NUM])};
-}
+type SyscallCountInfo = [u32; MAX_SYSCALL_NUM];
 
 #[repr(C)]
 #[derive(Debug)]
@@ -24,9 +22,31 @@ pub struct TaskInfo {
     /// Task status in it's life cycle
     status: TaskStatus,
     /// The numbers of syscall called by task
-    syscall_times: [u32; MAX_SYSCALL_NUM],
+    syscall_times: SyscallCountInfo,
     /// Total running time of task
     time: usize,
+}
+
+lazy_static! {
+    pub static ref TASK_SYSCALL_TIMES: 
+    UPSafeCell<HashMap::<usize, SyscallCountInfo>> = 
+        unsafe{
+            UPSafeCell::new(HashMap::<usize, SyscallCountInfo>::new())
+        };
+}
+
+/// 增加当前task的目标syscall计数
+pub fn increase_curr_task_syscall_times(syscall_id: &u32) {
+    TASK_SYSCALL_TIMES.exclusive_access()
+        .entry(get_curr_task_id())
+        .and_modify(|counter| (*counter)[syscall_id] += 1)
+        .or_insert(1);
+}
+
+/// 获取目标task的syscall计数列表
+pub fn get_task_syscall_times(task_id: &usize) -> u32 {
+    TASK_SYSCALL_TIMES.exclusive_access()
+    .get(task_id).unwrap_or([0; MAX_SYSCALL_NUM])
 }
 
 /// task exits and submit an exit code
@@ -62,7 +82,7 @@ pub fn sys_task_info(_ti: *mut TaskInfo) -> isize {
     let curr_task_cb = fetch_curr_task_control_block();
     unsafe {
         (*_ti).status = (*curr_task_cb).task_status;
-        (*_ti).syscall_times = COUNT_SYSCALL_TIMES.exclusive_access().clone();
+        (*_ti).syscall_times = get_task_syscall_times(get_curr_task_id());
         (*_ti).time = get_time();
     }
     0
