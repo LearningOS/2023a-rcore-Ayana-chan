@@ -14,7 +14,7 @@ mod switch;
 #[allow(clippy::module_inception)]
 mod task;
 
-use crate::config::MAX_APP_NUM;
+use crate::config::{MAX_APP_NUM, MAX_SYSCALL_NUM};
 use crate::loader::{get_num_app, init_app_cx};
 use crate::sync::UPSafeCell;
 use lazy_static::*;
@@ -54,6 +54,7 @@ lazy_static! {
         let mut tasks = [TaskControlBlock {
             task_cx: TaskContext::zero_init(),
             task_status: TaskStatus::UnInit,
+            task_syscall_times: [0; MAX_SYSCALL_NUM],
         }; MAX_APP_NUM];
         for (i, task) in tasks.iter_mut().enumerate() {
             task.task_cx = TaskContext::goto_restore(init_app_cx(i));
@@ -137,14 +138,14 @@ impl TaskManager {
     }
 
     /// 获取当前task id
-    fn get_curr_task_id(&self) -> u32 {
+    fn get_curr_task_id(&self) -> usize {
         self.inner.exclusive_access().current_task
     }
 
     /// 获取当前正在运行的任务的信息
-    fn fetch_curr_task_control_block(&self) -> *const TaskControlBlock{
+    fn fetch_curr_task_control_block(&self) -> &'static TaskControlBlock{
         let inner = self.inner.exclusive_access();
-        &inner.tasks[inner.current_task] as *const TaskControlBlock
+        &inner.tasks[inner.current_task]
     }
 
 }
@@ -171,12 +172,12 @@ fn mark_current_exited() {
 }
 
 /// 获取当前task id
-pub fn get_curr_task_id() -> u32 {
+pub fn get_curr_task_id() -> usize {
     TASK_MANAGER.get_curr_task_id()
 }
 
 /// 获取当前正在运行的任务的信息
-pub fn fetch_curr_task_control_block() -> *const TaskControlBlock{
+pub fn fetch_curr_task_control_block() -> &'static TaskControlBlock{
     TASK_MANAGER.fetch_curr_task_control_block()
 }
 
