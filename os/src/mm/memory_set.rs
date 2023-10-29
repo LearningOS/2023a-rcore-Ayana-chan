@@ -63,6 +63,12 @@ impl MemorySet {
             None,
         );
     }
+    /// 删除一个vpn
+    pub fn unmap_vpn(&mut self, vpn: VirtPageNum){
+        for i in 0..(self.areas.len()) {
+            self.areas[i].unmap_one(&mut self.page_table, vpn);
+        }
+    }
     fn push(&mut self, mut map_area: MapArea, data: Option<&[u8]>) {
         map_area.map(&mut self.page_table);
         if let Some(data) = data {

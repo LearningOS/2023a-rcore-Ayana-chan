@@ -125,8 +125,35 @@ pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
 
 // YOUR JOB: Implement munmap.
 pub fn sys_munmap(_start: usize, _len: usize) -> isize {
-    trace!("kernel: sys_munmap NOT IMPLEMENTED YET!");
-    -1
+    trace!("kernel: sys_munmap");
+
+    let va_start = VirtAddr::from(_start);
+    let va_end = VirtAddr::from(_start + _len - 1);
+
+    if _len == 0 {
+        return 0;
+    }
+    if !va_start.aligned(){
+        return -1;
+    }
+
+    let start_vpn: VirtPageNum = va_start.floor();
+    let end_vpn: VirtPageNum = va_end.ceil();
+    
+    let mem_set = get_current_mem_set();
+
+    //有没被映射过的页
+    for vpn in usize::from(start_vpn) ..usize::from(end_vpn) {
+        if let None = mem_set.translate(VirtPageNum::from(vpn)) {
+            return -1;
+        }
+    }
+
+    for vpn in usize::from(start_vpn) ..usize::from(end_vpn) {
+        mem_set.unmap_vpn(VirtPageNum::from(vpn));
+    }
+
+    0
 }
 /// change data segment size
 pub fn sys_sbrk(size: i32) -> isize {
