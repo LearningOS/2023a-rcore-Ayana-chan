@@ -2,9 +2,9 @@
 use crate::{
     config::MAX_SYSCALL_NUM,
     task::{
-        change_program_brk, exit_current_and_run_next, suspend_current_and_run_next, TaskStatus, current_user_token,
+        change_program_brk, exit_current_and_run_next, suspend_current_and_run_next, TaskStatus, current_user_token, get_current_mem_set,
     }, 
-    mm::{translated_byte_buffer, VirtAddr, VirtPageNum}, timer::get_time_us,
+    mm::{translated_byte_buffer, VirtAddr, MapPermission}, timer::get_time_us,
 };
 
 #[repr(C)]
@@ -79,11 +79,9 @@ pub fn sys_task_info(_ti: *mut TaskInfo) -> isize {
 
 // YOUR JOB: Implement mmap.
 pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
-    trace!("kernel: sys_mmap NOT IMPLEMENTED YET!");
+    trace!("kernel: sys_mmap");
 
-    let va_start = VirtAddr::from(_start);
-
-    if !va_start.aligned(){
+    if !VirtAddr::from(_start).aligned(){
         return -1;
     }
     if _port & !0x7 != 0 || _port * 0x7 == 0 {
@@ -91,15 +89,21 @@ pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
     }
     //有被映射的页 TODO
     //物理内存不足 TODO
-
-    let start_vpn: VirtPageNum = va_start.floor();
-    let end_vpn: VirtPageNum = VirtAddr::from(_start + _len).ceil(); // len向上取整
-    for _ in usize::from(start_vpn)..=usize::from(end_vpn) {
-        
-    }
-
-    //frame_alloc请求物理空间，返回None表示没空间了 TODO
-    -1
+    let mem_set = get_current_mem_set();
+    // let mut map_perm = MapPermission::U;
+    // if ph_flags.is_read() {
+    //     map_perm |= MapPermission::R;
+    // }
+    // if ph_flags.is_write() {
+    //     map_perm |= MapPermission::W;
+    // }
+    // if ph_flags.is_execute() {
+    //     map_perm |= MapPermission::X;
+    // }
+    mem_set.insert_framed_area(VirtAddr::from(_start), 
+        VirtAddr::from(_start + _len - 1),
+        MapPermission::from_bits_truncate(_port as u8 | (1<<3)));
+    0
 }
 
 // YOUR JOB: Implement munmap.

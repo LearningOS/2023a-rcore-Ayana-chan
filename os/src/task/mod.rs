@@ -15,6 +15,7 @@ mod switch;
 mod task;
 
 use crate::loader::{get_app_data, get_num_app};
+use crate::mm::MemorySet;
 use crate::sync::UPSafeCell;
 use crate::trap::TrapContext;
 use alloc::vec::Vec;
@@ -153,6 +154,13 @@ impl TaskManager {
             panic!("All applications completed!");
         }
     }
+
+    fn get_current_mem_set(&self) -> &'static mut MemorySet {
+        let mut inner = self.inner.exclusive_access();
+        let cur = inner.current_task;
+        let res = &mut inner.tasks[cur].memory_set as *mut MemorySet;
+        unsafe{&mut *res}
+    }
 }
 
 /// Run the first task in task list.
@@ -201,4 +209,9 @@ pub fn current_trap_cx() -> &'static mut TrapContext {
 /// Change the current 'Running' task's program break
 pub fn change_program_brk(size: i32) -> Option<usize> {
     TASK_MANAGER.change_current_program_brk(size)
+}
+
+/// 获取当前task的地址空间
+pub fn get_current_mem_set() -> &'static mut MemorySet {
+    TASK_MANAGER.get_current_mem_set()
 }
