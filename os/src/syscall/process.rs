@@ -4,7 +4,7 @@ use crate::{
     task::{
         change_program_brk, exit_current_and_run_next, suspend_current_and_run_next, TaskStatus, current_user_token, get_current_mem_set,
     }, 
-    mm::{translated_byte_buffer, VirtAddr, MapPermission}, timer::get_time_us,
+    mm::{translated_byte_buffer, VirtAddr, MapPermission, VirtPageNum}, timer::get_time_us,
 };
 
 #[repr(C)]
@@ -81,15 +81,33 @@ pub fn sys_task_info(_ti: *mut TaskInfo) -> isize {
 pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
     trace!("kernel: sys_mmap");
 
-    if !VirtAddr::from(_start).aligned(){
+    let va_start = VirtAddr::from(_start);
+    let va_end = VirtAddr::from(_start + _len - 1);
+
+    if _len == 0 {
+        return 0;
+    }
+    if !va_start.aligned(){
         return -1;
     }
     if _port & !0x7 != 0 || _port * 0x7 == 0 {
         return -1;
     }
-    //有被映射的页 TODO
-    //物理内存不足 TODO
+
+    let start_vpn: VirtPageNum = va_start.floor();
+    let end_vpn: VirtPageNum = va_end.ceil();
+    
     let mem_set = get_current_mem_set();
+
+    //有被映射过的页
+    for vpn in usize::from(start_vpn) ..usize::from(end_vpn) {
+        if let Some(_) = mem_set.translate(VirtPageNum::from(vpn)) {
+            return -1;
+        }
+    }
+
+    //物理内存不足 TODO 真需要考虑吗？
+
     // let mut map_perm = MapPermission::U;
     // if ph_flags.is_read() {
     //     map_perm |= MapPermission::R;
@@ -100,8 +118,7 @@ pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
     // if ph_flags.is_execute() {
     //     map_perm |= MapPermission::X;
     // }
-    mem_set.insert_framed_area(VirtAddr::from(_start), 
-        VirtAddr::from(_start + _len - 1),
+    mem_set.insert_framed_area(va_start, va_end,
         MapPermission::from_bits_truncate(_port as u8 | (1<<3)));
     0
 }

@@ -294,7 +294,7 @@ impl MapArea {
                 ppn = PhysPageNum(vpn.0);
             }
             MapType::Framed => {
-                let frame = frame_alloc().unwrap();
+                let frame = frame_alloc().unwrap(); //为None表示物理空间用完，会报错
                 ppn = frame.ppn;
                 self.data_frames.insert(vpn, frame);
             }
