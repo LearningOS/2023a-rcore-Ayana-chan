@@ -4,7 +4,7 @@ use crate::{
     task::{
         change_program_brk, exit_current_and_run_next, suspend_current_and_run_next, TaskStatus, current_user_token,
     }, 
-    mm::translated_byte_buffer, timer::get_time_us,
+    mm::{translated_byte_buffer, VirtAddr, VirtPageNum}, timer::get_time_us,
 };
 
 #[repr(C)]
@@ -80,6 +80,25 @@ pub fn sys_task_info(_ti: *mut TaskInfo) -> isize {
 // YOUR JOB: Implement mmap.
 pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
     trace!("kernel: sys_mmap NOT IMPLEMENTED YET!");
+
+    let va_start = VirtAddr::from(_start);
+
+    if !va_start.aligned(){
+        return -1;
+    }
+    if _port & !0x7 != 0 || _port * 0x7 == 0 {
+        return -1;
+    }
+    //有被映射的页 TODO
+    //物理内存不足 TODO
+
+    let start_vpn: VirtPageNum = va_start.floor();
+    let end_vpn: VirtPageNum = VirtAddr::from(_start + _len).ceil(); // len向上取整
+    for _ in usize::from(start_vpn)..=usize::from(end_vpn) {
+        
+    }
+
+    //frame_alloc请求物理空间，返回None表示没空间了 TODO
     -1
 }
 
