@@ -311,7 +311,11 @@ impl MapArea {
     #[allow(unused)]
     pub fn unmap_one(&mut self, page_table: &mut PageTable, vpn: VirtPageNum) {
         if self.map_type == MapType::Framed {
-            self.data_frames.remove(&vpn);
+            //添加检测机制，若vpn不属于自己这一area则不敢任何事
+            let res = self.data_frames.remove(&vpn);
+            if let None = res {
+                return;
+            }
         }
         page_table.unmap(vpn);
     }

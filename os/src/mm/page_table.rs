@@ -114,7 +114,7 @@ impl PageTable {
         let mut result: Option<&mut PageTableEntry> = None;
         for (i, idx) in idxs.iter().enumerate() {
             let pte = &mut ppn.get_pte_array()[*idx];
-            if i == 2 {
+            if i == 2 { //叶子节点
                 result = Some(pte);
                 break;
             }
@@ -136,6 +136,7 @@ impl PageTable {
     #[allow(unused)]
     pub fn unmap(&mut self, vpn: VirtPageNum) {
         let pte = self.find_pte(vpn).unwrap();
+        println!("DEBUG: pagetable: vpn: {:?} pte: {:#x}", vpn, pte.bits);
         assert!(pte.is_valid(), "vpn {:?} is invalid before unmapping", vpn);
         *pte = PageTableEntry::empty();
     }

@@ -99,14 +99,17 @@ pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
     let start_vpn: VirtPageNum = va_start.floor();
     let end_vpn: VirtPageNum = va_end.ceil();
     println!("DEBUG: mmap vpn [{:?}, {:?})", start_vpn, end_vpn);
+    let vpn_range = usize::from(start_vpn) ..usize::from(end_vpn);
     
     let mem_set = get_current_mem_set();
 
     //有被映射过的页
-    for vpn in usize::from(start_vpn) ..usize::from(end_vpn) {
-        if let Some(_) = mem_set.translate(VirtPageNum::from(vpn)) {
-            println!("mmap failed: vpn {:#x} have been alloced", vpn);
-            return -1;
+    for vpn in vpn_range.clone() {
+        if let Some(pte) = mem_set.translate(VirtPageNum::from(vpn)) {
+            if pte.is_valid() {
+                println!("mmap failed: vpn {:#x} have been alloced", vpn);
+                return -1;
+            }
         }
     }
 
@@ -123,10 +126,28 @@ pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
     //     map_perm |= MapPermission::X;
     // }
     let permission = (_port as u8) << 1 | (1 << 4);
-    println!("DEBUG: permission: {:08b}", permission);
+    let permission = MapPermission::from_bits_truncate(permission);
+    println!("DEBUG: MapPermission: {:08b}", permission);
 
-    mem_set.insert_framed_area(va_start, va_end,
-        MapPermission::from_bits_truncate(permission));
+    mem_set.insert_framed_area(va_start, va_end, permission);
+    
+    //检测分配成功
+    for vpn in vpn_range.clone() {
+        match mem_set.translate(VirtPageNum::from(vpn)) {
+            None => {
+                println!("mmap failed at last");
+                return -1;
+            },
+            Some(pte) => {
+                if !pte.is_valid() {
+                    println!("mmap failed at last");
+                    return -1;
+                }
+                println!("DEBUG: vpn {:#x} is valid", vpn);
+            }
+        }
+    }
+    
     0
 }
 
@@ -147,18 +168,34 @@ pub fn sys_munmap(_start: usize, _len: usize) -> isize {
 
     let start_vpn: VirtPageNum = va_start.floor();
     let end_vpn: VirtPageNum = va_end.ceil();
+    let vpn_range = usize::from(start_vpn) ..usize::from(end_vpn);
     
     let mem_set = get_current_mem_set();
 
     //有没被映射过的页
-    for vpn in usize::from(start_vpn) ..usize::from(end_vpn) {
-        if let None = mem_set.translate(VirtPageNum::from(vpn)) {
-            return -1;
+    for vpn in vpn_range.clone(){
+        match mem_set.translate(VirtPageNum::from(vpn)) {
+            None => return -1,
+            Some(pte) => {
+                if !pte.is_valid() {
+                    return -1;
+                }
+            }
         }
     }
 
-    for vpn in usize::from(start_vpn) ..usize::from(end_vpn) {
+    for vpn in vpn_range.clone() {
         mem_set.unmap_vpn(VirtPageNum::from(vpn));
+    }
+
+    //检测解除分配成功
+    for vpn in vpn_range.clone() {
+        if let Some(pte) = mem_set.translate(VirtPageNum::from(vpn)) {
+            if pte.is_valid() {
+                println!("munmap failed at last");
+                return -1;
+            }
+        }
     }
 
     0
