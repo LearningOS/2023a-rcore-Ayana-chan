@@ -143,7 +143,7 @@ pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
                     println!("mmap failed at last");
                     return -1;
                 }
-                println!("DEBUG: vpn {:#x} is valid", vpn);
+                println!("DEBUG: mmap: vpn {:#x} is valid", vpn);
             }
         }
     }
@@ -157,7 +157,7 @@ pub fn sys_munmap(_start: usize, _len: usize) -> isize {
     println!("DEBUG: kernel: sys_munmap 0x{:08x}, {}", _start, _len);
 
     let va_start = VirtAddr::from(_start);
-    let va_end = VirtAddr::from(_start + _len - 1);
+    let va_end = VirtAddr::from(_start + _len);
 
     if _len == 0 {
         return 0;
@@ -168,6 +168,7 @@ pub fn sys_munmap(_start: usize, _len: usize) -> isize {
 
     let start_vpn: VirtPageNum = va_start.floor();
     let end_vpn: VirtPageNum = va_end.ceil();
+    println!("DEBUG: munmap vpn [{:?}, {:?})", start_vpn, end_vpn);
     let vpn_range = usize::from(start_vpn) ..usize::from(end_vpn);
     
     let mem_set = get_current_mem_set();
@@ -180,6 +181,7 @@ pub fn sys_munmap(_start: usize, _len: usize) -> isize {
                 if !pte.is_valid() {
                     return -1;
                 }
+                println!("DEBUG: munmap: vpn {:#x} is valid", vpn);
             }
         }
     }
