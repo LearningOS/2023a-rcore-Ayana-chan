@@ -73,7 +73,7 @@ pub fn sys_task_info(_ti: *mut TaskInfo) -> isize {
 // YOUR JOB: Implement mmap.
 pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
     trace!("kernel: sys_mmap");
-    println!("DEBUG: kernel: sys_mmap 0x{:08x}, {}, {:08b}", _start, _len, _port);
+    // println!("DEBUG: kernel: sys_mmap 0x{:08x}, {}, {:08b}", _start, _len, _port);
 
     let va_start = VirtAddr::from(_start);
     let va_end = VirtAddr::from(_start + _len); //右侧是开区间
@@ -82,7 +82,7 @@ pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
         return 0;
     }
     if !va_start.aligned(){
-        println!("mmap failed: _start 0x{:08x} not aligned", _start);
+        trace!("mmap failed: _start 0x{:08x} not aligned", _start);
         return -1;
     }
     if _port & !0x7 != 0 || _port * 0x7 == 0 {
@@ -91,7 +91,7 @@ pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
 
     let start_vpn: VirtPageNum = va_start.floor();
     let end_vpn: VirtPageNum = va_end.ceil();
-    println!("DEBUG: mmap vpn [{:?}, {:?})", start_vpn, end_vpn);
+    // println!("DEBUG: mmap vpn [{:?}, {:?})", start_vpn, end_vpn);
     let vpn_range = usize::from(start_vpn) ..usize::from(end_vpn);
     
     let mem_set = get_current_mem_set();
@@ -100,7 +100,7 @@ pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
     for vpn in vpn_range.clone() {
         if let Some(pte) = mem_set.translate(VirtPageNum::from(vpn)) {
             if pte.is_valid() {
-                println!("mmap failed: vpn {:#x} have been alloced", vpn);
+                // println!("mmap failed: vpn {:#x} have been alloced", vpn);
                 return -1;
             }
         }
@@ -110,7 +110,7 @@ pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
 
     let permission = (_port as u8) << 1 | (1 << 4);
     let permission = MapPermission::from_bits_truncate(permission);
-    println!("DEBUG: MapPermission: {:08b}", permission);
+    // println!("DEBUG: MapPermission: {:08b}", permission);
 
     mem_set.insert_framed_area(va_start, va_end, permission);
     
@@ -118,15 +118,15 @@ pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
     for vpn in vpn_range.clone() {
         match mem_set.translate(VirtPageNum::from(vpn)) {
             None => {
-                println!("mmap failed at last");
+                trace!("mmap failed at last");
                 return -1;
             },
             Some(pte) => {
                 if !pte.is_valid() {
-                    println!("mmap failed at last");
+                    trace!("mmap failed at last");
                     return -1;
                 }
-                println!("DEBUG: mmap: vpn {:#x} is valid", vpn);
+                // println!("DEBUG: mmap: vpn {:#x} is valid", vpn);
             }
         }
     }
@@ -137,7 +137,7 @@ pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
 // YOUR JOB: Implement munmap.
 pub fn sys_munmap(_start: usize, _len: usize) -> isize {
     trace!("kernel: sys_munmap");
-    println!("DEBUG: kernel: sys_munmap 0x{:08x}, {}", _start, _len);
+    // println!("DEBUG: kernel: sys_munmap 0x{:08x}, {}", _start, _len);
 
     let va_start = VirtAddr::from(_start);
     let va_end = VirtAddr::from(_start + _len);
@@ -151,7 +151,7 @@ pub fn sys_munmap(_start: usize, _len: usize) -> isize {
 
     let start_vpn: VirtPageNum = va_start.floor();
     let end_vpn: VirtPageNum = va_end.ceil();
-    println!("DEBUG: munmap vpn [{:?}, {:?})", start_vpn, end_vpn);
+    // println!("DEBUG: munmap vpn [{:?}, {:?})", start_vpn, end_vpn);
     let vpn_range = usize::from(start_vpn) ..usize::from(end_vpn);
     
     let mem_set = get_current_mem_set();
@@ -164,7 +164,7 @@ pub fn sys_munmap(_start: usize, _len: usize) -> isize {
                 if !pte.is_valid() {
                     return -1;
                 }
-                println!("DEBUG: munmap: vpn {:#x} is valid", vpn);
+                // println!("DEBUG: munmap: vpn {:#x} is valid", vpn);
             }
         }
     }
@@ -177,7 +177,7 @@ pub fn sys_munmap(_start: usize, _len: usize) -> isize {
     for vpn in vpn_range.clone() {
         if let Some(pte) = mem_set.translate(VirtPageNum::from(vpn)) {
             if pte.is_valid() {
-                println!("munmap failed at last");
+                trace!("munmap failed at last");
                 return -1;
             }
         }
