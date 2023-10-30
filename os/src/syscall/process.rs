@@ -2,9 +2,9 @@
 use crate::{
     config::MAX_SYSCALL_NUM,
     task::{
-        change_program_brk, exit_current_and_run_next, suspend_current_and_run_next, TaskStatus, current_user_token, get_current_mem_set,
+        change_program_brk, exit_current_and_run_next, suspend_current_and_run_next, TaskStatus, get_current_mem_set, fetch_curr_task_control_block,
     }, 
-    mm::{translated_byte_buffer, VirtAddr, MapPermission, VirtPageNum}, timer::get_time_us,
+    mm::{VirtAddr, MapPermission, VirtPageNum, write_byte_buffer}, timer::{get_time_us, get_time_ms},
 };
 
 #[repr(C)]
@@ -45,27 +45,12 @@ pub fn sys_yield() -> isize {
 pub fn sys_get_time(_ts: *mut TimeVal, _tz: usize) -> isize {
     trace!("kernel: sys_get_time");
 
-    let time_val_size = core::mem::size_of::<TimeVal>();
-
     let us = get_time_us();
     let ans = TimeVal {
         sec: us / 1_000_000,
         usec: us % 1_000_000,
     };
-    let ans_slice = unsafe{
-        core::slice::from_raw_parts(&ans as *const TimeVal as *const u8, time_val_size)
-    };
-
-    let aims = translated_byte_buffer(current_user_token(),
-     _ts as *const u8, core::mem::size_of::<TimeVal>());
-    
-    let mut index: usize = 0;
-    for _sub in aims{
-        for aim_byte in _sub{
-            *aim_byte = ans_slice[index];
-            index += 1;
-        }
-    }
+    write_byte_buffer::<TimeVal>(ans, _ts);
     0
 }
 
@@ -73,8 +58,16 @@ pub fn sys_get_time(_ts: *mut TimeVal, _tz: usize) -> isize {
 /// HINT: You might reimplement it with virtual memory management.
 /// HINT: What if [`TaskInfo`] is splitted by two pages ?
 pub fn sys_task_info(_ti: *mut TaskInfo) -> isize {
-    trace!("kernel: sys_task_info NOT IMPLEMENTED YET!");
-    -1
+    trace!("kernel: sys_task_info");
+
+    let curr_task_cb = fetch_curr_task_control_block();
+    let ans = TaskInfo {
+        status: curr_task_cb.task_status,
+        syscall_times: curr_task_cb.task_syscall_times,
+        time: get_time_ms(),
+    };
+    write_byte_buffer::<TaskInfo>(ans, _ti);
+    0
 }
 
 // YOUR JOB: Implement mmap.
@@ -180,7 +173,7 @@ pub fn sys_munmap(_start: usize, _len: usize) -> isize {
         mem_set.unmap_vpn(VirtPageNum::from(vpn));
     }
 
-    //检测解除分配成功
+    //检测解除分配成功 TODO 有必要吗？
     for vpn in vpn_range.clone() {
         if let Some(pte) = mem_set.translate(VirtPageNum::from(vpn)) {
             if pte.is_valid() {

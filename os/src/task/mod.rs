@@ -161,6 +161,14 @@ impl TaskManager {
         let res = &mut inner.tasks[cur].memory_set as *mut MemorySet;
         unsafe{&mut *res}
     }
+
+    /// 获取当前正在运行的任务的信息
+    fn fetch_curr_task_control_block(&self) -> &'static mut TaskControlBlock{
+        let mut inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        let res = &mut inner.tasks[current] as *mut TaskControlBlock;
+        unsafe{&mut *res}
+    }
 }
 
 /// Run the first task in task list.
@@ -214,4 +222,9 @@ pub fn change_program_brk(size: i32) -> Option<usize> {
 /// 获取当前task的地址空间
 pub fn get_current_mem_set() -> &'static mut MemorySet {
     TASK_MANAGER.get_current_mem_set()
+}
+
+/// 获取当前正在运行的任务的信息
+pub fn fetch_curr_task_control_block() -> &'static mut TaskControlBlock{
+    TASK_MANAGER.fetch_curr_task_control_block()
 }
