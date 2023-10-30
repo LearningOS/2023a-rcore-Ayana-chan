@@ -115,16 +115,6 @@ pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
 
     //物理内存不足 TODO 真需要考虑吗？
 
-    // let mut map_perm = MapPermission::U;
-    // if ph_flags.is_read() {
-    //     map_perm |= MapPermission::R;
-    // }
-    // if ph_flags.is_write() {
-    //     map_perm |= MapPermission::W;
-    // }
-    // if ph_flags.is_execute() {
-    //     map_perm |= MapPermission::X;
-    // }
     let permission = (_port as u8) << 1 | (1 << 4);
     let permission = MapPermission::from_bits_truncate(permission);
     println!("DEBUG: MapPermission: {:08b}", permission);
