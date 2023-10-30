@@ -80,14 +80,16 @@ pub fn sys_task_info(_ti: *mut TaskInfo) -> isize {
 // YOUR JOB: Implement mmap.
 pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
     trace!("kernel: sys_mmap");
+    println!("DEBUG: kernel: sys_mmap 0x{:08x}, {}, {:08o}", _start, _len, _port);
 
     let va_start = VirtAddr::from(_start);
-    let va_end = VirtAddr::from(_start + _len - 1);
+    let va_end = VirtAddr::from(_start + _len); //右侧是开区间
 
     if _len == 0 {
         return 0;
     }
     if !va_start.aligned(){
+        //println!("DEBUG: mmap: not aligned");
         return -1;
     }
     if _port & !0x7 != 0 || _port * 0x7 == 0 {
@@ -96,6 +98,7 @@ pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
 
     let start_vpn: VirtPageNum = va_start.floor();
     let end_vpn: VirtPageNum = va_end.ceil();
+    println!("DEBUG: mmap vpn [{:?}, {:?})", start_vpn, end_vpn);
     
     let mem_set = get_current_mem_set();
 
@@ -126,6 +129,7 @@ pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
 // YOUR JOB: Implement munmap.
 pub fn sys_munmap(_start: usize, _len: usize) -> isize {
     trace!("kernel: sys_munmap");
+    println!("DEBUG: kernel: sys_munmap 0x{:08x}, {}", _start, _len);
 
     let va_start = VirtAddr::from(_start);
     let va_end = VirtAddr::from(_start + _len - 1);
