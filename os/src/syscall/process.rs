@@ -80,7 +80,7 @@ pub fn sys_task_info(_ti: *mut TaskInfo) -> isize {
 // YOUR JOB: Implement mmap.
 pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
     trace!("kernel: sys_mmap");
-    println!("DEBUG: kernel: sys_mmap 0x{:08x}, {}, {:08o}", _start, _len, _port);
+    println!("DEBUG: kernel: sys_mmap 0x{:08x}, {}, {:08b}", _start, _len, _port);
 
     let va_start = VirtAddr::from(_start);
     let va_end = VirtAddr::from(_start + _len); //右侧是开区间
@@ -89,7 +89,7 @@ pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
         return 0;
     }
     if !va_start.aligned(){
-        //println!("DEBUG: mmap: not aligned");
+        println!("mmap failed: _start 0x{:08x} not aligned", _start);
         return -1;
     }
     if _port & !0x7 != 0 || _port * 0x7 == 0 {
@@ -105,6 +105,7 @@ pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
     //有被映射过的页
     for vpn in usize::from(start_vpn) ..usize::from(end_vpn) {
         if let Some(_) = mem_set.translate(VirtPageNum::from(vpn)) {
+            println!("mmap failed: vpn {:#x} have been alloced", vpn);
             return -1;
         }
     }
@@ -121,8 +122,11 @@ pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
     // if ph_flags.is_execute() {
     //     map_perm |= MapPermission::X;
     // }
+    let permission = (_port as u8) << 1 | (1 << 4);
+    println!("DEBUG: permission: {:08b}", permission);
+
     mem_set.insert_framed_area(va_start, va_end,
-        MapPermission::from_bits_truncate(_port as u8 | (1<<3)));
+        MapPermission::from_bits_truncate(permission));
     0
 }
 
