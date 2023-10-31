@@ -4,11 +4,11 @@ use alloc::sync::Arc;
 use crate::{
     config::MAX_SYSCALL_NUM,
     loader::get_app_data_by_name,
-    mm::{translated_refmut, translated_str},
+    mm::{translated_refmut, translated_str, write_byte_buffer},
     task::{
         add_task, current_task, current_user_token, exit_current_and_run_next,
         suspend_current_and_run_next, TaskStatus,
-    },
+    }, timer::{get_time_us, get_time_ms},
 };
 
 #[repr(C)]
@@ -122,7 +122,14 @@ pub fn sys_get_time(_ts: *mut TimeVal, _tz: usize) -> isize {
         "kernel:pid[{}] sys_get_time NOT IMPLEMENTED",
         current_task().unwrap().pid.0
     );
-    -1
+
+    let us = get_time_us();
+    let ans = TimeVal {
+        sec: us / 1_000_000,
+        usec: us % 1_000_000,
+    };
+    write_byte_buffer::<TimeVal>(ans, _ts);
+    0
 }
 
 /// YOUR JOB: Finish sys_task_info to pass testcases
@@ -133,7 +140,19 @@ pub fn sys_task_info(_ti: *mut TaskInfo) -> isize {
         "kernel:pid[{}] sys_task_info NOT IMPLEMENTED",
         current_task().unwrap().pid.0
     );
-    -1
+    
+    let curr_task_cb = current_task();
+    if let None = curr_task_cb{
+        return -1;
+    }
+    let curr_task_cb = curr_task_cb.unwrap();
+    let ans = TaskInfo {
+        status: TaskStatus::Running,
+        syscall_times: (*curr_task_cb).get_task_syscall_times(),
+        time: get_time_ms(),
+    };
+    write_byte_buffer::<TaskInfo>(ans, _ti);
+    0
 }
 
 /// YOUR JOB: Implement mmap.
@@ -171,6 +190,7 @@ pub fn sys_spawn(_path: *const u8) -> isize {
         "kernel:pid[{}] sys_spawn NOT IMPLEMENTED",
         current_task().unwrap().pid.0
     );
+    //assert!(false, "unexpected");
     -1
 }
 
