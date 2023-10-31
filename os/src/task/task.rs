@@ -56,6 +56,13 @@ impl TaskControlBlock {
         // println!("DEBUG: get_time_ms_from_create: {} - {}", get_time_ms(), self.create_time_ms);
         (get_time_us() - self.create_time_us)/1000
     }
+
+    /// 获取地址空间
+    pub fn get_mem_set(&self) -> &'static mut MemorySet {
+        let mut inner = self.inner.exclusive_access();
+        let res = &mut inner.memory_set as *mut MemorySet;
+        unsafe{&mut *res}
+    }
 }
 
 pub struct TaskControlBlockInner {

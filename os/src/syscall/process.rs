@@ -4,7 +4,7 @@ use alloc::sync::Arc;
 use crate::{
     config::MAX_SYSCALL_NUM,
     loader::get_app_data_by_name,
-    mm::{translated_refmut, translated_str, write_byte_buffer},
+    mm::{translated_refmut, translated_str, write_byte_buffer, VirtAddr, VirtPageNum, MapPermission},
     task::{
         add_task, current_task, current_user_token, exit_current_and_run_next,
         suspend_current_and_run_next, TaskStatus,
@@ -158,19 +158,121 @@ pub fn sys_task_info(_ti: *mut TaskInfo) -> isize {
 /// YOUR JOB: Implement mmap.
 pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
     trace!(
-        "kernel:pid[{}] sys_mmap NOT IMPLEMENTED",
+        "kernel:pid[{}] sys_mmap",
         current_task().unwrap().pid.0
     );
-    -1
+    
+    let va_start = VirtAddr::from(_start);
+    let va_end = VirtAddr::from(_start + _len); //右侧是开区间
+
+    if _len == 0 {
+        return 0;
+    }
+    if !va_start.aligned(){
+        trace!("mmap failed: _start 0x{:08x} not aligned", _start);
+        return -1;
+    }
+    if _port & !0x7 != 0 || _port * 0x7 == 0 {
+        return -1;
+    }
+
+    let start_vpn: VirtPageNum = va_start.floor();
+    let end_vpn: VirtPageNum = va_end.ceil();
+    // println!("DEBUG: mmap vpn [{:?}, {:?})", start_vpn, end_vpn);
+    let vpn_range = usize::from(start_vpn) ..usize::from(end_vpn);
+    
+    let mem_set = (*current_task().unwrap()).get_mem_set();
+
+    //有被映射过的页
+    for vpn in vpn_range.clone() {
+        if let Some(pte) = mem_set.translate(VirtPageNum::from(vpn)) {
+            if pte.is_valid() {
+                // println!("mmap failed: vpn {:#x} have been alloced", vpn);
+                return -1;
+            }
+        }
+    }
+
+    //物理内存不足 TODO 真需要考虑吗？
+
+    let permission = (_port as u8) << 1 | (1 << 4);
+    let permission = MapPermission::from_bits_truncate(permission);
+    // println!("DEBUG: MapPermission: {:08b}", permission);
+
+    mem_set.insert_framed_area(va_start, va_end, permission);
+    
+    //检测分配成功
+    for vpn in vpn_range.clone() {
+        match mem_set.translate(VirtPageNum::from(vpn)) {
+            None => {
+                trace!("mmap failed at last");
+                return -1;
+            },
+            Some(pte) => {
+                if !pte.is_valid() {
+                    trace!("mmap failed at last");
+                    return -1;
+                }
+                // println!("DEBUG: mmap: vpn {:#x} is valid", vpn);
+            }
+        }
+    }
+    
+    0
 }
 
 /// YOUR JOB: Implement munmap.
 pub fn sys_munmap(_start: usize, _len: usize) -> isize {
     trace!(
-        "kernel:pid[{}] sys_munmap NOT IMPLEMENTED",
+        "kernel:pid[{}] sys_munmap",
         current_task().unwrap().pid.0
     );
-    -1
+    
+    let va_start = VirtAddr::from(_start);
+    let va_end = VirtAddr::from(_start + _len);
+
+    if _len == 0 {
+        return 0;
+    }
+    if !va_start.aligned(){
+        return -1;
+    }
+
+    let start_vpn: VirtPageNum = va_start.floor();
+    let end_vpn: VirtPageNum = va_end.ceil();
+    // println!("DEBUG: munmap vpn [{:?}, {:?})", start_vpn, end_vpn);
+    let vpn_range = usize::from(start_vpn) ..usize::from(end_vpn);
+    
+    let mem_set = (*current_task().unwrap()).get_mem_set();
+
+    //有没被映射过的页
+    for vpn in vpn_range.clone(){
+        match mem_set.translate(VirtPageNum::from(vpn)) {
+            None => return -1,
+            Some(pte) => {
+                if !pte.is_valid() {
+                    return -1;
+                }
+                // println!("DEBUG: munmap: vpn {:#x} is valid", vpn);
+            }
+        }
+    }
+
+    for vpn in vpn_range.clone() {
+        mem_set.unmap_vpn(VirtPageNum::from(vpn));
+    }
+
+    //检测解除分配成功 TODO 有必要吗？
+    for vpn in vpn_range.clone() {
+        if let Some(pte) = mem_set.translate(VirtPageNum::from(vpn)) {
+            if pte.is_valid() {
+                trace!("munmap failed at last");
+                return -1;
+            }
+        }
+    }
+
+    0
 }
 
 /// change data segment size
