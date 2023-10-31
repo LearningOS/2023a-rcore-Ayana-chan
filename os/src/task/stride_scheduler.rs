@@ -3,7 +3,8 @@ use core::{cmp::Ordering, ops::AddAssign};
 // static BIG_STRIDE: u8 = 255;
 static HALF_BIG_STRIDE: u8 = 127;
 
-pub struct Stride(u8);
+#[derive(Clone, Copy)]
+pub struct Stride(pub u8);
 
 // impl Stride {
 //     pub fn test_stride_ord() {
@@ -38,9 +39,9 @@ impl PartialEq for Stride {
     }
 }
 
-impl AddAssign for Stride{
-    fn add_assign(&mut self, other: Self) {
-        self.0 += other.0;
+impl AddAssign<u8> for Stride{
+    fn add_assign(&mut self, other: u8) {
+        self.0 += other;
     }
 }
 

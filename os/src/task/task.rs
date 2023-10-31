@@ -1,5 +1,6 @@
 //! Types related to task management & Functions for completely changing TCB
 use super::TaskContext;
+use super::stride_scheduler::Stride;
 use super::{kstack_alloc, pid_alloc, KernelStack, PidHandle};
 use crate::config::{TRAP_CONTEXT_BASE, MAX_SYSCALL_NUM};
 use crate::mm::{MemorySet, PhysPageNum, VirtAddr, KERNEL_SPACE};
@@ -71,7 +72,7 @@ impl TaskControlBlock {
     }
 
     /// 获取stride
-    pub fn get_stride(&self) -> u8{
+    pub fn get_stride(&self) -> Stride{
         let inner = self.inner.exclusive_access();
         inner.stride
     }
@@ -123,7 +124,7 @@ pub struct TaskControlBlockInner {
     pub priority: isize,
 
     /// stride
-    pub stride: u8,
+    pub stride: Stride,
 }
 
 impl TaskControlBlockInner {
@@ -177,7 +178,7 @@ impl TaskControlBlock {
                     program_brk: user_sp,
                     task_syscall_times: [0; MAX_SYSCALL_NUM],
                     priority: 16,
-                    stride: 0,
+                    stride: Stride(0),
                 })
             },
             create_time_us: get_time_us()
@@ -226,7 +227,7 @@ impl TaskControlBlock {
                     program_brk: parent_inner.program_brk,
                     task_syscall_times: [0; MAX_SYSCALL_NUM],
                     priority: 16,
-                    stride: 0,
+                    stride: Stride(0),
                 })
             },
             create_time_us: get_time_us(),
@@ -306,7 +307,7 @@ impl TaskControlBlock {
                     program_brk: parent_inner.program_brk,
                     task_syscall_times: [0; MAX_SYSCALL_NUM],
                     priority: 16,
-                    stride: 0,
+                    stride: Stride(0),
                 })
             },
             create_time_us: get_time_us(),
