@@ -20,6 +20,7 @@ mod processor;
 mod switch;
 #[allow(clippy::module_inception)]
 mod task;
+mod stride_scheduler;
 
 use crate::loader::get_app_data_by_name;
 use alloc::sync::Arc;
@@ -113,5 +114,6 @@ lazy_static! {
 
 ///Add init process to the manager
 pub fn add_initproc() {
+    INITPROC.set_priority(&0);
     add_task(INITPROC.clone());
 }

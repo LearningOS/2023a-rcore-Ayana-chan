@@ -63,6 +63,24 @@ impl TaskControlBlock {
         let res = &mut inner.memory_set as *mut MemorySet;
         unsafe{&mut *res}
     }
+
+    /// 设置优先级（任意值）
+    pub fn set_priority(&self, priority: &isize){
+        let mut inner = self.inner.exclusive_access();
+        inner.priority = *priority;
+    }
+
+    /// 获取stride
+    pub fn get_stride(&self) -> u8{
+        let inner = self.inner.exclusive_access();
+        inner.stride
+    }
+
+    /// 增加stride
+    pub fn add_stride(&self, pass: u8){
+        let mut inner = self.inner.exclusive_access();
+        inner.stride += pass;
+    }
 }
 
 pub struct TaskControlBlockInner {
@@ -100,6 +118,12 @@ pub struct TaskControlBlockInner {
 
     /// task syscall counter
     pub task_syscall_times: [u32; MAX_SYSCALL_NUM],
+
+    /// 进程优先级
+    pub priority: isize,
+
+    /// stride
+    pub stride: u8,
 }
 
 impl TaskControlBlockInner {
@@ -151,6 +175,8 @@ impl TaskControlBlock {
                     heap_bottom: user_sp,
                     program_brk: user_sp,
                     task_syscall_times: [0; MAX_SYSCALL_NUM],
+                    priority: 16,
+                    stride: 0,
                 })
             },
             create_time_us: get_time_us()
@@ -198,6 +224,8 @@ impl TaskControlBlock {
                     heap_bottom: parent_inner.heap_bottom,
                     program_brk: parent_inner.program_brk,
                     task_syscall_times: [0; MAX_SYSCALL_NUM],
+                    priority: 16,
+                    stride: 0,
                 })
             },
             create_time_us: get_time_us(),
@@ -276,6 +304,8 @@ impl TaskControlBlock {
                     heap_bottom: parent_inner.heap_bottom,
                     program_brk: parent_inner.program_brk,
                     task_syscall_times: [0; MAX_SYSCALL_NUM],
+                    priority: 16,
+                    stride: 0,
                 })
             },
             create_time_us: get_time_us(),
