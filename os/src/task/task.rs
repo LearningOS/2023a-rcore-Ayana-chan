@@ -1,6 +1,6 @@
 //! Types related to task management & Functions for completely changing TCB
 use super::TaskContext;
-use super::stride_scheduler::Stride;
+use super::stride_scheduler::{Stride, BIG_STRIDE};
 use super::{kstack_alloc, pid_alloc, KernelStack, PidHandle};
 use crate::config::{TRAP_CONTEXT_BASE, MAX_SYSCALL_NUM};
 use crate::mm::{MemorySet, PhysPageNum, VirtAddr, KERNEL_SPACE};
@@ -65,6 +65,12 @@ impl TaskControlBlock {
         unsafe{&mut *res}
     }
 
+    /// 获取优先级
+    pub fn get_priority(&self) -> isize{
+        let inner = self.inner.exclusive_access();
+        inner.priority
+    }
+
     /// 设置优先级（任意值）
     pub fn set_priority(&self, priority: &isize){
         let mut inner = self.inner.exclusive_access();
@@ -78,9 +84,10 @@ impl TaskControlBlock {
     }
 
     /// 增加stride
-    pub fn add_stride(&self, pass: u8){
+    pub fn add_stride(&self){
+        let priority = self.get_priority();
         let mut inner = self.inner.exclusive_access();
-        inner.stride += pass;
+        inner.stride += BIG_STRIDE / priority as u8;
     }
 }
 
@@ -149,7 +156,6 @@ impl TaskControlBlock {
     ///
     /// At present, it is only used for the creation of initproc
     pub fn new(elf_data: &[u8]) -> Self {
-        // Stride::test_stride_ord();
         // memory_set with elf program headers/trampoline/trap context/user stack
         let (memory_set, user_sp, entry_point) = MemorySet::from_elf(elf_data);
         let trap_cx_ppn = memory_set
