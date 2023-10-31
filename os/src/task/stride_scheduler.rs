@@ -46,7 +46,7 @@ impl Eq for Stride{}
 
 impl Ord for Stride{
     fn cmp(&self, other: &Self) -> Ordering {
-        self.0.partial_cmp(&other.0).unwrap()
+        self.partial_cmp(&other).unwrap()
     }
 }
 
@@ -56,11 +56,11 @@ impl AddAssign<u8> for Stride{
     }
 }
 
-impl From<Stride> for u8{
-    fn from(value: Stride) -> Self {
-        value.0
-    }
-}
+// impl From<Stride> for u8{
+//     fn from(value: Stride) -> Self {
+//         value.0
+//     }
+// }
 
 pub struct StrideWrapTcb(pub Stride, pub Arc<TaskControlBlock>);
 

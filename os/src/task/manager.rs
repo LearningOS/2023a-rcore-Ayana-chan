@@ -25,6 +25,7 @@ impl TaskManager {
     /// Take a process out of the ready queue
     /// 这里可以用于控制调度逻辑
     pub fn fetch(&mut self) -> Option<Arc<TaskControlBlock>> {
+        // println!("DEBUG: fetch: num: {}", self.ready_queue.len());
         self.ready_queue.pop_last().map(|wrap_tcb| wrap_tcb.1)
     }
 

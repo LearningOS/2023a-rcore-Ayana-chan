@@ -56,6 +56,7 @@ pub fn run_tasks() {
     loop {
         let mut processor = PROCESSOR.exclusive_access();
         if let Some(task) = fetch_task() {
+            // println!("schedule task pid: {}, priority: {}, stride: {}", task.pid.0, task.get_priority(), task.get_stride().0);
             //调整stride
             task.add_stride();
 

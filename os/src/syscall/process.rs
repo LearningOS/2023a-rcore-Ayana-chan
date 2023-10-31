@@ -322,5 +322,5 @@ pub fn sys_set_priority(_prio: isize) -> isize {
         return -1;
     }
     current_task().unwrap().set_priority(&_prio);
-    0
+    _prio
 }
