@@ -8,7 +8,7 @@ use crate::{
     task::{
         add_task, current_task, current_user_token, exit_current_and_run_next,
         suspend_current_and_run_next, TaskStatus,
-    }, timer::{get_time_us, get_time_ms},
+    }, timer::get_time_us,
 };
 
 #[repr(C)]
@@ -119,7 +119,7 @@ pub fn sys_waitpid(pid: isize, exit_code_ptr: *mut i32) -> isize {
 /// HINT: What if [`TimeVal`] is splitted by two pages ?
 pub fn sys_get_time(_ts: *mut TimeVal, _tz: usize) -> isize {
     trace!(
-        "kernel:pid[{}] sys_get_time NOT IMPLEMENTED",
+        "kernel:pid[{}] sys_get_time",
         current_task().unwrap().pid.0
     );
 
@@ -137,7 +137,7 @@ pub fn sys_get_time(_ts: *mut TimeVal, _tz: usize) -> isize {
 /// HINT: What if [`TaskInfo`] is splitted by two pages ?
 pub fn sys_task_info(_ti: *mut TaskInfo) -> isize {
     trace!(
-        "kernel:pid[{}] sys_task_info NOT IMPLEMENTED",
+        "kernel:pid[{}] sys_task_info",
         current_task().unwrap().pid.0
     );
     
@@ -149,7 +149,7 @@ pub fn sys_task_info(_ti: *mut TaskInfo) -> isize {
     let ans = TaskInfo {
         status: TaskStatus::Running,
         syscall_times: (*curr_task_cb).get_task_syscall_times(),
-        time: get_time_ms(),
+        time: (*curr_task_cb).get_time_ms_from_create(),
     };
     write_byte_buffer::<TaskInfo>(ans, _ti);
     0

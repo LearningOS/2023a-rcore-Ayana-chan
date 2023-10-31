@@ -4,6 +4,7 @@ use super::{kstack_alloc, pid_alloc, KernelStack, PidHandle};
 use crate::config::{TRAP_CONTEXT_BASE, MAX_SYSCALL_NUM};
 use crate::mm::{MemorySet, PhysPageNum, VirtAddr, KERNEL_SPACE};
 use crate::sync::UPSafeCell;
+use crate::timer::get_time_us;
 use crate::trap::{trap_handler, TrapContext};
 use alloc::sync::{Arc, Weak};
 use alloc::vec::Vec;
@@ -22,6 +23,9 @@ pub struct TaskControlBlock {
 
     /// Mutable
     inner: UPSafeCell<TaskControlBlockInner>,
+
+    /// time when self created
+    pub create_time_us: usize,
 }
 
 impl TaskControlBlock {
@@ -45,6 +49,12 @@ impl TaskControlBlock {
     pub fn increase_task_syscall_times(&self, syscall_id: &usize){
         let mut inner = self.inner.exclusive_access();
         inner.task_syscall_times[*syscall_id] += 1;
+    }
+
+    /// 获取从创建以来的时间
+    pub fn get_time_ms_from_create(&self) -> usize{
+        // println!("DEBUG: get_time_ms_from_create: {} - {}", get_time_ms(), self.create_time_ms);
+        (get_time_us() - self.create_time_us)/1000
     }
 }
 
@@ -82,7 +92,7 @@ pub struct TaskControlBlockInner {
     pub program_brk: usize,
 
     /// task syscall counter
-    pub task_syscall_times: [u32; MAX_SYSCALL_NUM]
+    pub task_syscall_times: [u32; MAX_SYSCALL_NUM],
 }
 
 impl TaskControlBlockInner {
@@ -136,6 +146,7 @@ impl TaskControlBlock {
                     task_syscall_times: [0; MAX_SYSCALL_NUM],
                 })
             },
+            create_time_us: get_time_us()
         };
         // prepare TrapContext in user space
         let trap_cx = task_control_block.inner_exclusive_access().get_trap_cx();
@@ -207,9 +218,10 @@ impl TaskControlBlock {
                     exit_code: 0,
                     heap_bottom: parent_inner.heap_bottom,
                     program_brk: parent_inner.program_brk,
-                    task_syscall_times: [0; MAX_SYSCALL_NUM]
+                    task_syscall_times: [0; MAX_SYSCALL_NUM],
                 })
             },
+            create_time_us: get_time_us(),
         });
         // add child
         parent_inner.children.push(task_control_block.clone());

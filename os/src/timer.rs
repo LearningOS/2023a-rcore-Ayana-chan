@@ -19,12 +19,14 @@ pub fn get_time() -> usize {
 /// get current time in milliseconds
 #[allow(dead_code)]
 pub fn get_time_ms() -> usize {
+    // println!("DEBUG: get_time_ms: {} / {}", time::read(), (CLOCK_FREQ / MSEC_PER_SEC));
     time::read() / (CLOCK_FREQ / MSEC_PER_SEC)
 }
 
 /// get current time in microseconds
 #[allow(dead_code)]
 pub fn get_time_us() -> usize {
+    // println!("DEBUG: get_time_us: {} / {}", time::read(), (CLOCK_FREQ / MICRO_PER_SEC));
     time::read() / (CLOCK_FREQ / MICRO_PER_SEC)
 }
 
