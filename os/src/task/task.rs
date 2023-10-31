@@ -148,6 +148,7 @@ impl TaskControlBlock {
     ///
     /// At present, it is only used for the creation of initproc
     pub fn new(elf_data: &[u8]) -> Self {
+        // Stride::test_stride_ord();
         // memory_set with elf program headers/trampoline/trap context/user stack
         let (memory_set, user_sp, entry_point) = MemorySet::from_elf(elf_data);
         let trap_cx_ppn = memory_set
