@@ -229,17 +229,22 @@ impl Inode {
                 }
                 //若nlink为0则要彻底删除文件。此处暂时无视
             });
-        // 删去dst目录项（用empty覆盖）
+        // 删去对应的dst目录项（直接用empty覆盖，连size都不变）
         self.modify_disk_inode(|root_inode| {
-            // append file in the dirent
             let file_count = (root_inode.size as usize) / DIRENT_SZ;
-            // write dirent
-            let dirent = DirEntry::empty();
-            root_inode.write_at(
-                file_count * DIRENT_SZ,
-                dirent.as_bytes(),
-                &self.block_device,
-            );
+            let mut dirent = DirEntry::empty();
+            // 遍历找到对应的dirent
+            for i in 0..file_count {
+                assert_eq!(
+                    root_inode.read_at(DIRENT_SZ * i, dirent.as_bytes_mut(), &self.block_device),
+                    DIRENT_SZ,
+                );
+                //置空
+                if dirent.name() == name {
+                    root_inode.write_at(DIRENT_SZ * i, DirEntry::empty().as_bytes(), &self.block_device);
+                    break;
+                }
+            }
         });
 
         block_cache_sync_all();
