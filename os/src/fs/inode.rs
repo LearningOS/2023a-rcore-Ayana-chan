@@ -129,6 +129,11 @@ pub fn linkat(src_name: &str, dst_name: &str) -> isize {
     ROOT_INODE.linkat(src_name, dst_name)
 }
 
+/// 解除硬链接
+pub fn unlinkat(name: &str) -> isize {
+    ROOT_INODE.unlinkat(name)
+}
+
 impl File for OSInode {
     fn readable(&self) -> bool {
         self.readable

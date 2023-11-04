@@ -171,12 +171,12 @@ impl Inode {
         }
 
         // 增加硬链接计数
-        let (new_inode_block_id, new_inode_block_offset) = fs.get_disk_inode_pos(src_inode_id);
-        get_block_cache(new_inode_block_id as usize, Arc::clone(&self.block_device))
+        let (inode_block_id, inode_block_offset) = fs.get_disk_inode_pos(src_inode_id);
+        get_block_cache(inode_block_id as usize, Arc::clone(&self.block_device))
             .lock()
-            .modify(new_inode_block_offset, |new_inode: &mut DiskInode| {
-                log::info!("nlink from {} to {}", new_inode.nlink, new_inode.nlink + 1);
-                new_inode.nlink += 1;
+            .modify(inode_block_offset, |inode: &mut DiskInode| {
+                log::info!("nlink from {} to {}", inode.nlink, inode.nlink + 1);
+                inode.nlink += 1;
             });
         // 添加dst目录项
         self.modify_disk_inode(|root_inode| {
@@ -187,6 +187,54 @@ impl Inode {
             self.increase_size(new_size as u32, root_inode, &mut fs);
             // write dirent
             let dirent = DirEntry::new(dst_name, src_inode_id);
+            root_inode.write_at(
+                file_count * DIRENT_SZ,
+                dirent.as_bytes(),
+                &self.block_device,
+            );
+        });
+
+        block_cache_sync_all();
+        0
+        // release efs lock automatically by compiler
+    }
+    /// 删去name的硬链接，只有root会调用（实际上是源与目的的首个公共父目录）
+    /// 成功返回0，否则返回-1
+    pub fn unlinkat(&self, name: &str) -> isize{
+        log::info!("unlinkat {}", name);
+        let fs = self.fs.lock();
+
+        // 获取目标。如果目标不存在，则失败
+        let op = |root_inode: &DiskInode| {
+            // assert it is a directory
+            assert!(root_inode.is_dir());
+            // has the file been created?
+            self.find_inode_id(name, root_inode)
+        };
+        let inode_id = self.read_disk_inode(op);
+        if inode_id.is_none() {
+            log::info!("linkat: aim not exist");
+            return -1;
+        }
+        let inode_id = inode_id.unwrap();
+
+        // 减少硬链接计数
+        let (new_inode_block_id, new_inode_block_offset) = fs.get_disk_inode_pos(inode_id);
+        get_block_cache(new_inode_block_id as usize, Arc::clone(&self.block_device))
+            .lock()
+            .modify(new_inode_block_offset, |new_inode: &mut DiskInode| {
+                if new_inode.nlink > 0 {
+                    log::info!("nlink from {} to {}", new_inode.nlink, new_inode.nlink - 1);
+                    new_inode.nlink -= 1;
+                }
+                //若nlink为0则要彻底删除文件。此处暂时无视
+            });
+        // 删去dst目录项（用empty覆盖）
+        self.modify_disk_inode(|root_inode| {
+            // append file in the dirent
+            let file_count = (root_inode.size as usize) / DIRENT_SZ;
+            // write dirent
+            let dirent = DirEntry::empty();
             root_inode.write_at(
                 file_count * DIRENT_SZ,
                 dirent.as_bytes(),
