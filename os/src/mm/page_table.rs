@@ -146,7 +146,9 @@ impl PageTable {
     /// get the physical address from the virtual address
     pub fn translate_va(&self, va: VirtAddr) -> Option<PhysAddr> {
         self.find_pte(va.clone().floor()).map(|pte| {
+            //println!("translate_va:va = {:?}", va);
             let aligned_pa: PhysAddr = pte.ppn().into();
+            //println!("translate_va:pa_align = {:?}", aligned_pa);
             let offset = va.page_offset();
             let aligned_pa_usize: usize = aligned_pa.into();
             (aligned_pa_usize + offset).into()
@@ -273,6 +275,24 @@ impl Iterator for UserBufferIterator {
                 self.current_idx += 1;
             }
             Some(r)
+        }
+    }
+}
+
+/// 将数据写入到buffer里面
+pub fn write_byte_buffer<T>(ans: T, target: *mut T){
+    let t_size = core::mem::size_of::<T>();
+    let ans_slice = unsafe{
+        core::slice::from_raw_parts(&ans as *const T as *const u8, t_size)
+    };
+    let aims = translated_byte_buffer(crate::task::current_user_token(),
+        target as *const u8, t_size);
+    
+    let mut index: usize = 0;
+    for _sub in aims{
+        for aim_byte in _sub{
+            *aim_byte = ans_slice[index];
+            index += 1;
         }
     }
 }
