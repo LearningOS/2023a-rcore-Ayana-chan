@@ -392,10 +392,6 @@ impl DiskInode {
         write_size
     }
 
-    pub fn get_type(&self) -> DiskInodeType{
-        self.type_.clone()
-    }
-
     pub fn get_nlink(&self) -> u32{
         self.nlink
     }

@@ -300,9 +300,9 @@ impl Inode {
     pub fn get_inode_id(&self) -> usize{
         self.fs.lock().get_inode_id(self.block_id, self.block_offset)
     }
-    /// 获取文件类型
-    pub fn get_dirent_type(&self) -> DiskInodeType {
-        self.read_disk_inode(|disk_inode| disk_inode.get_type())
+    /// 获取文件类型，为file时返回true
+    pub fn get_dirent_type(&self) -> bool {
+        self.read_disk_inode(|disk_inode| disk_inode.is_file())
     }
     /// 获取硬链接计数
     pub fn get_nlink(&self) -> u32 {

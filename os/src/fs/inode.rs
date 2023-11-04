@@ -11,7 +11,7 @@ use crate::sync::UPSafeCell;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use bitflags::*;
-use easy_fs::{EasyFileSystem, Inode, DiskInodeType};
+use easy_fs::{EasyFileSystem, Inode};
 use lazy_static::*;
 
 /// inode in memory
@@ -168,11 +168,12 @@ impl File for OSInode {
     fn get_fstat(&self) -> Option<Stat> {
         // println!("DEBUG: OSINode: get_fstat");
         let inode = self.inner.exclusive_access().inode.clone();
-        let inode_type = inode.get_dirent_type();
-        let mode = match inode_type {
-            DiskInodeType::File => StatMode::FILE,
-            DiskInodeType::Directory => StatMode::DIR
-        };
+        let mode;
+        if inode.get_dirent_type() {
+            mode = StatMode::FILE;
+        }else{
+            mode = StatMode::DIR;
+        }
         
         Some(Stat{
             dev: 0,
