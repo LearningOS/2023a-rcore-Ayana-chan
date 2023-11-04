@@ -68,9 +68,11 @@ impl SuperBlock {
     }
 }
 /// Type of a disk inode
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone)]
 pub enum DiskInodeType {
+    /// 普通文件
     File,
+    /// 目录
     Directory,
 }
 
@@ -386,6 +388,10 @@ impl DiskInode {
             start = end_current_block;
         }
         write_size
+    }
+
+    pub fn get_type(&self) -> DiskInodeType{
+        self.type_.clone()
     }
 }
 /// A directory entry

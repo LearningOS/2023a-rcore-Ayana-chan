@@ -1,6 +1,6 @@
 //! File and filesystem-related syscalls
 use crate::fs::{open_file, OpenFlags, Stat};
-use crate::mm::{translated_byte_buffer, translated_str, UserBuffer};
+use crate::mm::{translated_byte_buffer, translated_str, UserBuffer, write_byte_buffer};
 use crate::task::{current_task, current_user_token};
 
 pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> isize {
@@ -78,10 +78,31 @@ pub fn sys_close(fd: usize) -> isize {
 /// YOUR JOB: Implement fstat.
 pub fn sys_fstat(_fd: usize, _st: *mut Stat) -> isize {
     trace!(
-        "kernel:pid[{}] sys_fstat NOT IMPLEMENTED",
+        "kernel:pid[{}] sys_fstat",
         current_task().unwrap().pid.0
     );
-    -1
+
+    let task = current_task().unwrap();
+    let inner = task.inner_exclusive_access();
+    if _fd >= inner.fd_table.len() {
+        return -1;
+    }
+    let aim_inode = &inner.fd_table[_fd];
+    if aim_inode.is_none() {
+        return -1;
+    }
+
+    let aim_inode = aim_inode.as_ref().unwrap().clone();
+    drop(inner); // 不然会一直借用到结束
+
+    let ans = aim_inode.get_fstat();
+    if let None = ans {
+        return -1;
+    }
+    let ans = ans.unwrap();
+
+    write_byte_buffer::<Stat>(ans, _st);
+    0
 }
 
 /// YOUR JOB: Implement linkat.
