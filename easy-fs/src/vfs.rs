@@ -138,6 +138,62 @@ impl Inode {
         )))
         // release efs lock automatically by compiler
     }
+    /// 将src_name硬链接到dst_name，只有root会调用（实际上是源与目的的首个公共父目录）
+    /// 看做一次特殊的新建文件
+    /// 成功返回0，否则返回-1
+    pub fn linkat(&self, src_name: &str, dst_name: &str) -> isize{
+        let mut fs = self.fs.lock();
+
+        // 获取源。如果源不存在，则失败
+        let src_op = |root_inode: &DiskInode| {
+            // assert it is a directory
+            assert!(root_inode.is_dir());
+            // has the file been created?
+            self.find_inode_id(src_name, root_inode)
+        };
+        let src_inode_id = self.read_disk_inode(src_op);
+        if src_inode_id.is_none() {
+            return -1;
+        }
+        let src_inode_id = src_inode_id.unwrap();
+        // 获取目标。如果目标存在，则失败
+        let dst_op = |root_inode: &DiskInode| {
+            // assert it is a directory
+            assert!(root_inode.is_dir());
+            // has the file been created?
+            self.find_inode_id(src_name, root_inode)
+        };
+        if self.read_disk_inode(dst_op).is_some() {
+            return -1;
+        }
+
+        // 增加硬链接计数
+        let (new_inode_block_id, new_inode_block_offset) = fs.get_disk_inode_pos(src_inode_id);
+        get_block_cache(new_inode_block_id as usize, Arc::clone(&self.block_device))
+            .lock()
+            .modify(new_inode_block_offset, |new_inode: &mut DiskInode| {
+                new_inode.nlink += 1;
+            });
+        // 添加dst目录项
+        self.modify_disk_inode(|root_inode| {
+            // append file in the dirent
+            let file_count = (root_inode.size as usize) / DIRENT_SZ;
+            let new_size = (file_count + 1) * DIRENT_SZ;
+            // increase size
+            self.increase_size(new_size as u32, root_inode, &mut fs);
+            // write dirent
+            let dirent = DirEntry::new(dst_name, src_inode_id);
+            root_inode.write_at(
+                file_count * DIRENT_SZ,
+                dirent.as_bytes(),
+                &self.block_device,
+            );
+        });
+
+        block_cache_sync_all();
+        0
+        // release efs lock automatically by compiler
+    }
     /// List inodes under current inode
     pub fn ls(&self) -> Vec<String> {
         let _fs = self.fs.lock();
@@ -190,5 +246,9 @@ impl Inode {
     /// 获取文件类型
     pub fn get_dirent_type(&self) -> DiskInodeType {
         self.read_disk_inode(|disk_inode| disk_inode.get_type())
+    }
+    /// 获取硬链接计数
+    pub fn get_nlink(&self) -> u32 {
+        self.read_disk_inode(|disk_inode| disk_inode.get_nlink())
     }
 }

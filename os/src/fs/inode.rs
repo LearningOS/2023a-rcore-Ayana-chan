@@ -168,7 +168,7 @@ impl File for OSInode {
             dev: 0,
             ino: inode.get_inode_id() as u64,
             mode,
-            nlink: 0, //TODO
+            nlink: inode.get_nlink(),
             pad: [0; 7],
         })
     }

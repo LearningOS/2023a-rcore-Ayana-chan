@@ -96,7 +96,7 @@ pub fn sys_fstat(_fd: usize, _st: *mut Stat) -> isize {
     drop(inner); // 不然会一直借用到结束
 
     let ans = aim_inode.get_fstat();
-    if let None = ans {
+    if ans.is_none() {
         return -1;
     }
     let ans = ans.unwrap();
