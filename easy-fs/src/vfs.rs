@@ -153,6 +153,7 @@ impl Inode {
         };
         let src_inode_id = self.read_disk_inode(src_op);
         if src_inode_id.is_none() {
+            // println!("linkat: src not exist");
             return -1;
         }
         let src_inode_id = src_inode_id.unwrap();
@@ -164,6 +165,7 @@ impl Inode {
             self.find_inode_id(src_name, root_inode)
         };
         if self.read_disk_inode(dst_op).is_some() {
+            // println!("linkat: dst has existed");
             return -1;
         }
 
