@@ -142,6 +142,7 @@ impl Inode {
     /// 看做一次特殊的新建文件
     /// 成功返回0，否则返回-1
     pub fn linkat(&self, src_name: &str, dst_name: &str) -> isize{
+        log::info!("linkat from {} to {}", src_name, dst_name);
         let mut fs = self.fs.lock();
 
         // 获取源。如果源不存在，则失败
@@ -153,7 +154,7 @@ impl Inode {
         };
         let src_inode_id = self.read_disk_inode(src_op);
         if src_inode_id.is_none() {
-            // println!("linkat: src not exist");
+            log::info!("linkat: src not exist");
             return -1;
         }
         let src_inode_id = src_inode_id.unwrap();
@@ -162,10 +163,10 @@ impl Inode {
             // assert it is a directory
             assert!(root_inode.is_dir());
             // has the file been created?
-            self.find_inode_id(src_name, root_inode)
+            self.find_inode_id(dst_name, root_inode)
         };
         if self.read_disk_inode(dst_op).is_some() {
-            // println!("linkat: dst has existed");
+            log::info!("linkat: dst has existed");
             return -1;
         }
 
@@ -174,6 +175,7 @@ impl Inode {
         get_block_cache(new_inode_block_id as usize, Arc::clone(&self.block_device))
             .lock()
             .modify(new_inode_block_offset, |new_inode: &mut DiskInode| {
+                log::info!("nlink from {} to {}", new_inode.nlink, new_inode.nlink + 1);
                 new_inode.nlink += 1;
             });
         // 添加dst目录项
